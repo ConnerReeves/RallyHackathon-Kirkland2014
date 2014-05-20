@@ -1,0 +1,210 @@
+.x-panel .x-resizable-handle-north,
+.x-panel .x-resizable-handle-east,
+.x-panel .x-resizable-handle-south,
+.x-panel .x-resizable-handle-west {
+  background: transparent !important; }
+.x-panel .x-grid-row-over > .x-grid-cell {
+  color: #FFFFFF !important;
+  background-color: #B5D8EB !important; }
+.x-panel .x-grid-row-selected > .x-grid-cell {
+  color: #FFFFFF !important;
+  background-color: #35b2e4 !important; }
+
+.x-panel .x-panel-header,
+.x-region-collapsed-placeholder {
+  background: #f6f6f6;
+  border-color: #d6d6d6; }
+  .x-panel .x-panel-header .x-panel-header-text,
+  .x-region-collapsed-placeholder .x-panel-header-text {
+    color: #666666 !important; }
+  .x-panel .x-panel-header img,
+  .x-region-collapsed-placeholder img {
+    background: transparent !important; }
+  .x-panel .x-panel-header .x-tool,
+  .x-region-collapsed-placeholder .x-tool {
+    margin-left: -1px !important;
+    width: 16px !important;
+    height: 16px !important;
+    background: #f6f6f6 !important;
+    border: 1px solid #d6d6d6 !important;
+    border-radius: 8px; }
+  .x-panel .x-panel-header.x-panel-header-default-left,
+  .x-region-collapsed-placeholder.x-panel-header-default-left {
+    border-width: 0 1px 0 0 !important; }
+  .x-panel .x-panel-header.x-panel-header-default-right,
+  .x-region-collapsed-placeholder.x-panel-header-default-right {
+    border-width: 0 0 0 1px !important; }
+
+#rpmTreePanel .x-tree-panel .x-panel-body {
+  border: 0; }
+#rpmTreePanel .x-tree-panel .x-tree-icon {
+  display: none; }
+#rpmTreePanel .x-tree-panel .propertyField, #rpmTreePanel .x-tree-panel .milestoneDate, #rpmTreePanel .x-tree-panel .groupTotal {
+  background: #f6f6f6;
+  color: #666666;
+  border: 1px solid #d6d6d6;
+  display: inline-block;
+  text-align: center;
+  font-size: 9px;
+  height: 16px;
+  line-height: 15px;
+  margin: 2px 4px 0 0;
+  border-radius: 3px;
+  font-weight: bold; }
+#rpmTreePanel .x-tree-panel .propertyField,
+#rpmTreePanel .x-tree-panel .groupTotal {
+  width: 35px; }
+#rpmTreePanel .x-tree-panel .milestoneDate {
+  width: 55px; }
+#rpmTreePanel #metaContainer .rally-grid .x-grid-row-over > .x-grid-cell,
+#rpmTreePanel #metaContainer .rally-grid .x-grid-row-selected > .x-grid-cell {
+  color: #000 !important;
+  background-color: #FFF !important; }
+#rpmTreePanel #metaContainer .rally-grid .x-grid-cell-inner {
+  padding: 1px 2px; }
+
+.app {
+  background: #FFF !important;
+  overflow: hidden !important;
+  border-left: 1px solid #D6D6D6;
+  border-right: 1px solid #D6D6D6; }
+
+.yes-harmonized .rally-grid.x-grid .x-grid-header-ct .x-box-inner .x-column-header .x-column-header-inner {
+  display: block; }
+
+.x-container {
+  background: white; }
+
+.x-btn {
+  background: white !important;
+  border-color: #d6d6d6 !important;
+  margin: 2px 1px;
+  padding: 1px 1px !important;
+  border-radius: 4px; }
+  .x-btn .x-btn-inner {
+    color: #666666 !important; }
+
+.borderTop {
+  border-top: 1px solid #d6d6d6 !important; }
+
+.borderRight {
+  border-right: 1px solid #d6d6d6 !important; }
+
+.borderBottom {
+  border-bottom: 1px solid #d6d6d6 !important; }
+
+.borderLeft {
+  border-left: 1px solid #d6d6d6 !important; }
+
+.tabBar {
+  background: #f6f6f6;
+  padding: 0 1px; }
+  .tabBar .x-btn.upTab {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0; }
+  .tabBar .x-btn.downTab {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0; }
+  .tabBar .x-btn.active {
+    background: #35b2e4 !important; }
+    .tabBar .x-btn.active .x-btn-inner {
+      color: #FFF !important; }
+
+.x-menu .x-menu-item-text {
+  font-family: arial, helvetica, sans-serif !important;
+  font-size: 11px !important; }
+
+.rally-grid .x-panel-default {
+  border-color: #D6D6D6 !important; }
+.rally-grid .x-panel-body-default {
+  border-width: 0 !important; }
+.rally-grid .x-column-header-sort-DESC,
+.rally-grid .x-column-header-sort-ASC {
+  background-color: transparent !important; }
+.rally-grid .x-grid-group-hd .x-grid-cell-inner {
+  border-color: #666666 !important; }
+  .rally-grid .x-grid-group-hd .x-grid-cell-inner .x-grid-group-title {
+    color: black !important; }
+.rally-grid .x-grid-view {
+  margin-top: 1px !important; }
+.rally-grid .x-grid-header-ct .x-box-inner {
+  border-bottom: 2px solid #666666 !important; }
+.rally-grid .x-grid-row-over .x-grid-cell {
+  background-color: #35b2e4 !important;
+  color: white !important; }
+.rally-grid .btn > .x-grid-cell-inner:hover {
+  cursor: pointer !important; }
+.rally-grid .x-grid-row-summary .blue,
+.rally-grid .blue > .x-grid-cell-inner {
+  border: 1px solid #b0d8f1;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #c6e9fe;
+  background: linear-gradient(to bottom, #c6e9fe 0%, #b0d8f1 100%); }
+.rally-grid .x-grid-row-summary .red,
+.rally-grid .red > .x-grid-cell-inner {
+  border: 1px solid #f1b0b8;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #fec6cd;
+  background: linear-gradient(to bottom, #fec6cd 0%, #f1b0b8 100%); }
+.rally-grid .x-grid-row-summary .yellow,
+.rally-grid .yellow > .x-grid-cell-inner {
+  border: 1px solid #ebd88a;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #feea9b;
+  background: linear-gradient(to bottom, #feea9b 0%, #ebd88a 100%); }
+.rally-grid .x-grid-row-summary .green,
+.rally-grid .green > .x-grid-cell-inner {
+  border: 1px solid #b8d7be;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #c5eecd;
+  background: linear-gradient(to bottom, #c5eecd 0%, #b8d7be 100%); }
+.rally-grid .x-grid-row-summary .grey,
+.rally-grid .grey > .x-grid-cell-inner {
+  border: 1px solid #e4e4e4;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #f6f6f6;
+  background: linear-gradient(to bottom, #f6f6f6 0%, #e4e4e4 100%); }
+
+.x-tabpanel .x-tabpanel-child {
+  padding-left: 0 !important; }
+
+.x-window-header-default-top,
+.x-window-body-default {
+  background: white !important; }
+
+.x-window-header-default-top {
+  border: none !important; }
+  .x-window-header-default-top .x-tool {
+    display: none !important; }
+
+.x-toolbar {
+  border: none !important; }
+  .x-toolbar.x-toolbar-default {
+    background-color: transparent !important; }
+
+.x-mask {
+  background-color: white !important;
+  opacity: 0.5 !important; }
+
+.x-mask-msg div {
+  background-color: white !important; }

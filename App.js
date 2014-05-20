@@ -6,17 +6,19 @@ Ext.define('CustomApp', {
     items: [{
         xtype:'tabpanel',
         minTabWidth: 150,
+        deferredRender: false,
         items:[{
             title: 'Permissions',
             layout: 'border',
             defaults: {
                 layout: 'fit',
-                resizable: true,
-                collapsible: false
+                collapsible: false,
+                border: false
             },
             items: [{
                 title: 'User Selection',
                 id: 'userSelectionGridContainer',
+                cls: 'borderRight',
                 region: 'west',
                 width: '50%',
                 listeners: {
@@ -32,7 +34,7 @@ Ext.define('CustomApp', {
                                     var grid = Ext.getCmp('userSelectionGrid');
                                     if (grid) {
                                         grid.store.filterBy(function(record) {
-                                            return _.contains((record.get('FirstName') + record.get('LastName')).toLowerCase(), searchText.toLowerCase());
+                                            return _.contains((record.get('FirstName') + record.get('LastName')).toLowerCase().replace(/ /g, ''), searchText.toLowerCase().replace(/ /g, ''));
                                         });
                                     }
                                 }, 250)
@@ -47,11 +49,12 @@ Ext.define('CustomApp', {
                 region: 'center',
                 width: '50%',
                 header: {
-                    height: 30
+                    height: 29
                 }
             },
             {
                 region: 'south',
+                cls: 'tabBar borderTop',
                 height: 28,
                 resizable: false,
                 layout: 'hbox',
@@ -59,25 +62,28 @@ Ext.define('CustomApp', {
                     margin: '2 2 0 2'
                 },
                 items: [{
-                    xtype: 'combobox',
-                    id: 'permissionLevelPicker',
-                    store: ['None', 'Viewer', 'Editor', 'Admin'],
-                    value: 'Viewer',
-                    width: 180,
-                    fieldLabel: 'Permission Level',
-                    labelWidth: 85
+                    xtype      : 'combobox',
+                    id         : 'permissionLevelPicker',
+                    store      : ['None', 'Viewer', 'Editor', 'Admin'],
+                    value      : 'Viewer',
+                    width      : 180,
+                    fieldLabel : 'Permission Level',
+                    labelWidth : 90,
+                    labelAlign : 'right'
                 },
                 {
-                    xtype: 'checkbox',
-                    id: 'overwritePermissionsPicker',
-                    fieldLabel: 'Overwrite Existing Permissions',
-                    labelWidth: 155
+                    xtype      : 'checkbox',
+                    id         : 'overwritePermissionsPicker',
+                    fieldLabel : 'Overwrite Existing Permissions',
+                    labelWidth : 160,
+                    labelAlign : 'right'
                 },
                 {
-                    xtype: 'checkbox',
-                    id: 'includeChildProjectsPicker',
-                    fieldLabel: 'Include Child Projects',
-                    labelWidth: 106
+                    xtype      : 'checkbox',
+                    id         : 'includeChildProjectsPicker',
+                    fieldLabel : 'Include Child Projects',
+                    labelWidth : 112,
+                    labelAlign : 'right'
                 },
                 {
                     xtype: 'component',
@@ -86,12 +92,23 @@ Ext.define('CustomApp', {
                 {
                     xtype: 'button',
                     text: 'Apply',
+                    cls: 'active',
                     height: 22,
                     handler: function() {
                         Rally.getApp()._applyPermissions();
                     }
                 }]
             }]
+        },
+        {
+            title: 'User Activity',
+            id: 'userActivityTab',
+            layout: 'fit',
+            listeners: {
+                resize: function() {
+                    Rally.getApp()._resizeCharts();
+                }
+            }
         }]
     }],
     
@@ -100,10 +117,12 @@ Ext.define('CustomApp', {
         Deft.Chain.parallel([
             this._addUsersGrid,
             this._addProjectTree
-        ]).then({
+        ], this).then({
             success: function() {
                 Ext.getBody().unmask();
-            }
+                this._addUserActivityChart();
+            },
+            scope: this
         });
     },
     
@@ -113,9 +132,9 @@ Ext.define('CustomApp', {
             function () {
                 var deferred = Ext.create('Deft.Deferred');
                 Ext.create('Rally.data.WsapiDataStore', {
-                    // limit   : Infinity,
+                    limit   : Infinity,
                     model   : 'User',
-                    fetch   : ['FirstName','LastName','Department'],
+                    fetch   : ['FirstName','LastName','Department','LastLoginDate','Disabled','CreationDate'],
                     filters : [{
                         property: 'ObjectID',
                         operator: '>',
@@ -148,14 +167,31 @@ Ext.define('CustomApp', {
             },
             
             function (store) {
+                this.userStore = store;
+                
                 Ext.getCmp('userSelectionGridContainer').add({
                     xtype: 'rallygrid',
                     id: 'userSelectionGrid',
-                    store: store,
-                    selModel: Ext.create('Ext.selection.CheckboxModel'),
+                    store: this.userStore,
                     columnCfgs: ['FirstName','LastName','Department'],
+                    enableEditing: false,
                     showPagingToolbar: false,
-                    showRowActionsColumn: false
+                    showRowActionsColumn: false,
+                    selModel: Ext.create('Ext.selection.CheckboxModel', {
+                        onHeaderClick: function (headerCt, header, e) {
+                            e.stopEvent();
+                            var me = this;
+                            var isChecked = header.el.hasCls(Ext.baseCSSPrefix + 'grid-hd-checker-on');
+
+                            me.preventFocus = true;
+                            if (isChecked) {
+                                me.deselectAll(true);
+                            } else {
+                                me.selectAll(true);
+                            }
+                            delete me.preventFocus;
+                        }
+                    })
                 });
             }
         ], this).then({
@@ -173,9 +209,13 @@ Ext.define('CustomApp', {
             function() {
                 var deferred = Ext.create('Deft.Deferred');
                 Ext.create('Rally.data.WsapiDataStore', {
-                    limit : Infinity,
-                    model : 'Project',
-                    fetch : ['Parent','Name','ObjectID']
+                    limit   : Infinity,
+                    model   : 'Project',
+                    fetch   : ['Parent','Name','ObjectID'],
+                    sorters : [{
+                        property  : 'Name',
+                        direction : 'ASC'
+                    }]
                 }).load({
                     callback : function(records, operation, success) {
                         deferred.resolve(records);
@@ -223,7 +263,6 @@ Ext.define('CustomApp', {
                     }
                 };
 
-
                 _.each(treeData, function(rootNode) {
                     this.populateChildren(rootNode);
                 }, this);
@@ -236,9 +275,10 @@ Ext.define('CustomApp', {
                     xtype         : 'treepanel',
                     id            : 'projectSelectionTree',
                     allowDeselect : true,
-                    // animate       : false,
+                    border        : false,
                     multiSelect   : true,
                     rootVisible   : false,
+                    useArrows     : true,
                     store         : Ext.create('Ext.data.TreeStore', {
                         fields : ['children','id','text'],
                         root   : {
@@ -326,6 +366,8 @@ Ext.define('CustomApp', {
                                         Project: '/project/' + projectOID,
                                         Role: permissionLevel
                                     }));
+                                } else if (permissionLevel === 'None') {
+                                    recordsToDelete.push(recordToUpdate);
                                 } else if (recordToUpdate.get('Role') !== permissionLevel && overwriteExisting) {
                                     recordsToDelete.push(recordToUpdate);
                                     recordsToCreate.push(Ext.create(projectPermissionModel, {
@@ -346,12 +388,12 @@ Ext.define('CustomApp', {
             },
 
             function(recordSets) {
-                console.log(recordSets);
                 if (recordSets.recordsToCreate.length + recordSets.recordsToDelete.length > 0) {
                     this.add({
                         xtype: 'rallydialog',
                         id: 'dialog',
                         autoShow: true,
+                        closeAction: 'destroy',
                         width: 500,
                         closable: true,
                         title: 'Updating Permissions...',
@@ -373,8 +415,8 @@ Ext.define('CustomApp', {
                             }
                         }],
                         listeners: {
-                            close : function() {
-                                this.destroy();
+                            close : function(panel) {
+                                panel.destroy();
                             }
                         }
                     });
@@ -392,17 +434,9 @@ Ext.define('CustomApp', {
                                 return !_.contains(failedIds, record.get('User').ObjectID + '_' + record.get('Project').ObjectID);
                             });
 
-                            _.each(failedIds, function() {
-                                Ext.getCmp('updateProgress').incrimentCount();
-                            });
-
                             return this._processRecords(recordSets.recordsToCreate, 'save');
                         }
-                    ], this).then({
-                        success: function() {
-                            
-                        }
-                    });
+                    ], this);
                 } else {
                     Rally.ui.notify.Notifier.showWarning({
                         message  : 'No permissions to be changed.',
@@ -421,13 +455,18 @@ Ext.define('CustomApp', {
                 var deferred = Ext.create('Deft.Deferred');
                 record[method]({
                     success: function() {
-                        Ext.getCmp('updateProgress').incrimentCount();
+                        var progressBar = Ext.getCmp('updateProgress');
+                        if (progressBar) {
+                            progressBar.incrimentCount();
+                        }
                         deferred.resolve();
                     },
                     failure: function(record, err) {
-                        console.log(err);
-                        Ext.getCmp('updateProgress').failCount++;
-                        Ext.getCmp('updateProgress').incrimentCount();
+                        var progressBar = Ext.getCmp('updateProgress');
+                        if (progressBar) {
+                            progressBar.failCount++;
+                            progressBar.incrimentCount();
+                        }
                         failedRecords.push(record);
                         deferred.resolve();
                     }
@@ -442,5 +481,252 @@ Ext.define('CustomApp', {
             }
         });
         return deferred.promise;
+    },
+
+    _addUserActivityChart: function() {
+        var self = this;
+
+        var departments = _.groupBy(this.userStore.getRecords(), function(record) {
+            return record.get('Department');
+        });
+
+        var categories = ['Never', '>6 Months', '3-6 Months', '1-3 Months', 'Last Month', 'Last Week'];
+
+        var series = Rally.util.Array.sortByAttribute(_.map(departments, function(records, department) {
+            var data = _.range(0, 6, 0);
+
+            _.each(records, function(record) {
+                var ageIndex;
+                if (record.get('LastLoginDate') === null) {
+                    ageIndex = 0;
+                } else {
+                    var lastLoginAgeInWeeks = Rally.util.DateTime.getDifference(new Date(), record.get('LastLoginDate'), 'week');
+                    if (lastLoginAgeInWeeks > 26) ageIndex = 1;
+                    if (lastLoginAgeInWeeks > 13 && lastLoginAgeInWeeks <= 26) ageIndex = 2;
+                    if (lastLoginAgeInWeeks > 4 && lastLoginAgeInWeeks <= 13) ageIndex = 3;
+                    if (lastLoginAgeInWeeks > 1 && lastLoginAgeInWeeks <= 4) ageIndex = 4;
+                    if (lastLoginAgeInWeeks <= 1) ageIndex = 5;
+                }
+
+                data[ageIndex]++;
+                record.set('AgeIndex', ageIndex);
+            });
+
+            return {
+                name : department,
+                data : data
+            };
+        }), 'name');
+
+        Ext.getCmp('userActivityTab').add({
+            xtype: 'rallychart',
+            id: 'userActivityChart',
+            chartConfig : {
+                chart: {
+                    type: 'column',
+                    events: {
+                        load: _.delay(self._resizeCharts, 1000)
+                    }
+                },
+                title: {
+                    text: 'Last Login Activity'
+                },
+                subtitle: {
+                    text: 'by Department'
+                },
+                yAxis: {
+                    min: 0,
+                    stackLabels: {
+                        enabled: true,
+                        style: {
+                            fontWeight: 'bold'
+                        }
+                    },
+                    title: {
+                        text: ''
+                    }
+                },
+                legend: {
+                    align: 'center',
+                    verticalAlign: 'bottom'
+                },
+                tooltip: {
+                    formatter: function() {
+                        return '<b>' + this.series.name + ': '+ this.y +'</b><br/>Total: '+ this.point.stackTotal;
+                    }
+                },
+                plotOptions: {
+                    column: {
+                        stacking: 'normal',
+                        dataLabels: {
+                            enabled: true,
+                            style: {
+                                color : 'black'
+                            },
+                            formatter: function() {
+                                return this.y / this.series.yAxis.dataMax < 0.05 ? '' : this.y;
+                            }
+                        },
+                        events: {
+                            click: function(event) {
+                                var records = _.filter(self.userStore.getRecords(), function(record) {
+                                    return record.get('AgeIndex') === event.point.x;
+                                });
+
+                                self._showUserDetail(records, 'User Activity: ' + event.point.category);
+                            }
+                        }
+                    }
+                }
+            },
+            chartData : {
+                series     : series,
+                categories : categories
+            },
+            listeners: {
+                afterrender: function() {
+                    this.unmask();
+                }
+            }
+        });
+    },
+
+    _resizeCharts: function() {
+        var chart = Ext.getCmp('userActivityChart');
+        var tabHeight = Ext.getCmp('userActivityTab').getHeight();
+        if (chart && chart.down('highchart')) {
+            chart.down('highchart').setHeight(tabHeight);
+        }
+    },
+
+    _showUserDetail: function(records, title) {
+        var self = this;
+
+        Ext.create('Rally.ui.dialog.Dialog', {
+            layout     : 'fit',
+            autoShow   : true,
+            width      : 750,
+            height     : Ext.getBody().getHeight() - 250,
+            autoScroll : true,
+            closable   : true,
+            movable    : true,
+            title      : title,
+            items      : [{
+                xtype : 'rallygrid',
+                id    : 'userActivityGrid',
+                model : 'User',
+                store : Ext.create('Ext.data.Store', {
+                    fields     : ['FirstName','LastName','Department','LastLoginDate','Disabled','CreationDate'],
+                    data       : records,
+                    groupField : 'Department',
+                    pageSize   : 1000000
+                }),
+                showPagingToolbar    : false,
+                showRowActionsColumn : false,
+                features             : [{
+                    ftype          : 'groupingsummary',
+                    groupHeaderTpl : '{name} ({rows.length} User{[values.rows.length > 1 ? "s" : ""]})'
+                }],
+                columnCfgs: [{
+                    dataIndex : 'FirstName',
+                    text: 'First Name',
+                    flex: 1
+                },{
+                    dataIndex : 'LastName',
+                    text: 'Last Name',
+                    flex: 1
+                },{
+                    dataIndex : 'LastLoginDate',
+                    text: 'Last Login',
+                    width : 80,
+                    align: 'center',
+                    renderer: function(val) {
+                        return Ext.util.Format.date(val, 'Y-m-d') || 'N/A';
+                    }
+                },{
+                    dataIndex : 'CreationDate',
+                    text: 'Created',
+                    width : 80,
+                    align: 'center',
+                    renderer: function(val) {
+                        return Ext.util.Format.date(val, 'Y-m-d') || 'N/A';
+                    }
+                },{
+                    dataIndex : 'Disabled',
+                    text: 'Disabled',
+                    width : 80,
+                    align: 'center',
+                    renderer: function(val) {
+                        return val ? '<span class="icon-check"></span>' : '';
+                    }
+                }],
+                selModel: Ext.create('Ext.selection.CheckboxModel', {
+                    onHeaderClick: function (headerCt, header, e) {
+                        e.stopEvent();
+                        var me = this;
+                        var isChecked = header.el.hasCls(Ext.baseCSSPrefix + 'grid-hd-checker-on');
+
+                        me.preventFocus = true;
+                        if (isChecked) {
+                            me.deselectAll(true);
+                        } else {
+                            me.selectAll(true);
+                        }
+                        delete me.preventFocus;
+                    }
+                })
+            }],
+            listeners: {
+                afterrender: function() {
+                    this.header.add(1, [{
+                        xtype   : 'exportbutton',
+                        gridId  : 'userActivityGrid',
+                        margins : '0 5 0 0'
+                    },{
+                        xtype   : 'button',
+                        text    : 'Disable Selected',
+                        handler : function() {
+                            var grid          = Ext.getCmp('userActivityGrid');
+                            var selModel      = grid.getSelectionModel();
+                            var selectedUsers = selModel.getSelection();
+                            self._editUserDisabledSetting(selectedUsers, true, grid);
+                        }
+                    },{
+                        xtype   : 'button',
+                        text    : 'Enable Selected',
+                        handler : function() {
+                            var grid          = Ext.getCmp('userActivityGrid');
+                            var selModel      = grid.getSelectionModel();
+                            var selectedUsers = selModel.getSelection();
+                            self._editUserDisabledSetting(selectedUsers, false, grid);
+                        }
+                    }]);
+                }
+            }
+        });
+    },
+
+    _editUserDisabledSetting: function(records, disable, grid) {
+        grid.setLoading('Loading');
+        Rally.data.BulkRecordUpdater.updateRecords({
+            records: records,
+            propertiesToUpdate: {
+                Disabled : disable
+            },
+            success: function() {
+                grid.setLoading(false);
+                Rally.ui.notify.Notifier.show({
+                    message  : 'Users successfully ' + (disable ? 'disabled' : 'enabled') + '.',
+                    duration : 5000
+                });
+            },
+            failure: function() {
+                grid.setLoading(false);
+                Rally.ui.notify.Notifier.show({
+                    message  : 'An error occured while updating.',
+                    duration : 1000
+                });
+            }
+        });
     }
 });

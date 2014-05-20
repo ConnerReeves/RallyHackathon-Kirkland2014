@@ -1,12 +1,14 @@
 {
-   "name": "User Managment Dashboard",
+   "name": "User Permissions Managment",
    "className": "CustomApp",
    "server": "https://rally1.rallydev.com",
    "sdk": "2.0rc2",
    "javascript": [
+      "./RallyHelpers/ExportButton.js",
       "App.js"
    ],
    "css": [
+      "./CSS/base.css",
       "app.css"
    ]
 }

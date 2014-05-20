@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>User Managment Dashboard</title>
+    <title>User Permissions Managment</title>
 
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
 
     <script type="text/javascript">
         Rally.onReady(function () {
-                Ext.define("CustomApp",{extend:"Rally.app.App",componentCls:"app",items:{html:'<a href="https://help.rallydev.com/apps/2.0rc2/doc/">App SDK 2.0rc2 Docs</a>'},launch:function(){}});
+                Ext.define("CustomApp.ExportButton",{extend:"Ext.button.Button",alias:"widget.exportbutton",text:'<span style="font-size:12px;margin-right:5px;" class="icon-download"></span><span style="margin-right:1px;">Export</span>',margin:"1 0 0 2",gridId:"",constructor:function(config){Ext.apply(this,config),this.callParent()},handler:function(){var grid=Ext.getCmp(this.gridId),exportTitle="Rally Export ("+Ext.Date.format(new Date,"F j, Y, gia")+")",exportData="";if(exportData+=Ext.isIE?"<table><tr>":'"'+exportTitle+'"\r\n\n',grid.store.groupField&&(exportData+=Ext.isIE?"<td>Group</td>":"Group,"),_.each(_.filter(grid.columns,function(column){return!column.hidden}),function(column){exportData+=Ext.isIE?"<td>"+column.text+"</td>":column.text+","}),Ext.isIE?exportData+="</tr>":(exportData.slice(0,-1),exportData+="\r\n"),grid.store.each(function(record){grid.store.groupField&&(exportData+=Ext.isIE?"<tr><td>"+record.get(grid.store.groupField)+"</td>":'"'+record.get(grid.store.groupField)+'",'),Ext.Array.each(grid.columns,function(column){if(!column.hidden){var columnText=record.get(column.dataIndex);column.exportRenderer?columnText=column.exportRenderer(record):column.renderer&&(columnText=column.renderer(columnText,null,record)),exportData+=Ext.isIE?"<td>"+columnText+"</td>":'"'+columnText+'",'}}),exportData+=Ext.isIE?"</tr>":"\r\n"}),Ext.isIE&&(exportData+="</table>"),Ext.isIE)try{window.clipboardData.setData("Text",exportData);var objExcel=new ActiveXObject("Excel.Application");objExcel.visible=!0;var objWorkbook=objExcel.Workbooks.Add,objWorksheet=objWorkbook.Worksheets(1);objWorksheet.Paste(),objExcel.visible=!0}catch(err){Ext.Msg.alert("Export Failed",err)}else{var link=document.createElement("a");link.href="data:text/csv;charset=utf-8,"+escape(exportData),link.style="visibility:hidden",link.download=exportTitle+".csv",document.body.appendChild(link),link.click(),document.body.removeChild(link)}}});
+                Ext.define("CustomApp",{extend:"Rally.app.App",componentCls:"app",layout:"fit",items:[{xtype:"tabpanel",minTabWidth:150,deferredRender:!1,items:[{title:"Permissions",layout:"border",defaults:{layout:"fit",collapsible:!1,border:!1},items:[{title:"User Selection",id:"userSelectionGridContainer",cls:"borderRight",region:"west",width:"50%",listeners:{afterrender:function(panel){panel.header.add({xtype:"textfield",emptyText:"User Search...",width:200,margin:"0 0 0 0",listeners:{change:_.debounce(function(searchBox){var searchText=searchBox.getValue(),grid=Ext.getCmp("userSelectionGrid");grid&&grid.store.filterBy(function(record){return _.contains((record.get("FirstName")+record.get("LastName")).toLowerCase().replace(/ /g,""),searchText.toLowerCase().replace(/ /g,""))})},250)}})}}},{title:"Project Selection",id:"projectSelectionTreeContainer",region:"center",width:"50%",header:{height:29}},{region:"south",cls:"tabBar borderTop",height:28,resizable:!1,layout:"hbox",defaults:{margin:"2 2 0 2"},items:[{xtype:"combobox",id:"permissionLevelPicker",store:["None","Viewer","Editor","Admin"],value:"Viewer",width:180,fieldLabel:"Permission Level",labelWidth:90,labelAlign:"right"},{xtype:"checkbox",id:"overwritePermissionsPicker",fieldLabel:"Overwrite Existing Permissions",labelWidth:160,labelAlign:"right"},{xtype:"checkbox",id:"includeChildProjectsPicker",fieldLabel:"Include Child Projects",labelWidth:112,labelAlign:"right"},{xtype:"component",flex:1},{xtype:"button",text:"Apply",cls:"active",height:22,handler:function(){Rally.getApp()._applyPermissions()}}]}]},{title:"User Activity",id:"userActivityTab",layout:"fit",listeners:{resize:function(){Rally.getApp()._resizeCharts()}}}]}],launch:function(){Ext.getBody().mask("Loading"),Deft.Chain.parallel([this._addUsersGrid,this._addProjectTree],this).then({success:function(){Ext.getBody().unmask(),this._addUserActivityChart()},scope:this})},_addUsersGrid:function(){var deferred=Ext.create("Deft.Deferred");return Deft.Chain.pipeline([function(){var deferred=Ext.create("Deft.Deferred");return Ext.create("Rally.data.WsapiDataStore",{limit:1/0,model:"User",fetch:["FirstName","LastName","Department","LastLoginDate","Disabled","CreationDate"],filters:[{property:"ObjectID",operator:">",value:0},{property:"FirstName",operator:"!=",value:null},{property:"LastName",operator:"!=",value:null}],sorters:[{property:"FirstName",direction:"ASC"},{property:"LastName",direction:"ASC"}]}).load({callback:function(records,operation,success){deferred.resolve(this)}}),deferred.promise},function(store){this.userStore=store,Ext.getCmp("userSelectionGridContainer").add({xtype:"rallygrid",id:"userSelectionGrid",store:this.userStore,columnCfgs:["FirstName","LastName","Department"],enableEditing:!1,showPagingToolbar:!1,showRowActionsColumn:!1,selModel:Ext.create("Ext.selection.CheckboxModel",{onHeaderClick:function(headerCt,header,e){e.stopEvent();var me=this,isChecked=header.el.hasCls(Ext.baseCSSPrefix+"grid-hd-checker-on");me.preventFocus=!0,isChecked?me.deselectAll(!0):me.selectAll(!0),delete me.preventFocus}})})}],this).then({success:function(){deferred.resolve()}}),deferred.promise},_addProjectTree:function(){var deferred=Ext.create("Deft.Deferred");return Deft.Chain.pipeline([function(){var deferred=Ext.create("Deft.Deferred");return Ext.create("Rally.data.WsapiDataStore",{limit:1/0,model:"Project",fetch:["Parent","Name","ObjectID"],sorters:[{property:"Name",direction:"ASC"}]}).load({callback:function(records,operation,success){deferred.resolve(records)}}),deferred.promise},function(records){var treeData=_.map(_.filter(records,function(record){return null===record.get("Parent")}),function(record){return{text:record.get("Name"),id:record.get("ObjectID")}}),parentChildMap=_.groupBy(_.filter(records,function(record){return record.get("Parent")}),function(record){return record.get("Parent").ObjectID});return this.populateChildren=function(parentNode){var childRecords=parentChildMap[parentNode.id];childRecords&&childRecords.length?(parentNode.children=_.map(childRecords,function(childRecord){var childNode={text:childRecord.get("Name"),id:childRecord.get("ObjectID")};return this.populateChildren(childNode),childNode},this),parentNode.leaf=!1):(parentNode.children=[],parentNode.leaf=!0)},_.each(treeData,function(rootNode){this.populateChildren(rootNode)},this),treeData},function(treeData){Ext.getCmp("projectSelectionTreeContainer").add({xtype:"treepanel",id:"projectSelectionTree",allowDeselect:!0,border:!1,multiSelect:!0,rootVisible:!1,useArrows:!0,store:Ext.create("Ext.data.TreeStore",{fields:["children","id","text"],root:{expanded:!0,children:treeData}})})}],this).then({success:function(){deferred.resolve()}}),deferred.promise},_applyPermissions:function(){var permissionLevel=Ext.getCmp("permissionLevelPicker").getValue(),overwriteExisting=Ext.getCmp("overwritePermissionsPicker").checked,includeChildProjects=Ext.getCmp("includeChildProjectsPicker").checked,selectedUserOIDs=_.map(Ext.getCmp("userSelectionGrid").getSelectionModel().getSelection(),function(record){return record.get("ObjectID")}),selectedProjectOIDs=[];_.each(Ext.getCmp("projectSelectionTree").getSelectionModel().getSelection(),function(node){includeChildProjects?node.cascadeBy(function(child){selectedProjectOIDs.push(child.get("id"))}):selectedProjectOIDs.push(node.get("id"))}),Deft.Chain.pipeline([function(){var deferred=Ext.create("Deft.Deferred");return Ext.create("Rally.data.WsapiDataStore",{limit:1/0,model:"ProjectPermission",fetch:["Role","Project","ObjectID","User"],filters:Rally.data.QueryFilter.or(_.map(selectedUserOIDs,function(userOID){return{property:"User.ObjectID",value:userOID}})),listeners:{beforeload:function(){this.getProxy().actionMethods={read:"POST"},this.getProxy().timeout=6e5}}}).load({callback:function(records,operation,success){deferred.resolve(_.indexBy(records,function(record){return record.get("User").ObjectID+"_"+record.get("Project").ObjectID}))}}),deferred.promise},function(userPermissionsMap){var deferred=Ext.create("Deft.Deferred");return Rally.data.ModelFactory.getModel({type:"ProjectPermission",success:function(projectPermissionModel){var recordsToCreate=[],recordsToDelete=[];_.each(selectedUserOIDs,function(userOID){_.each(selectedProjectOIDs,function(projectOID){var recordToUpdate=userPermissionsMap[userOID+"_"+projectOID];recordToUpdate?"None"===permissionLevel?recordsToDelete.push(recordToUpdate):recordToUpdate.get("Role")!==permissionLevel&&overwriteExisting&&(recordsToDelete.push(recordToUpdate),recordsToCreate.push(Ext.create(projectPermissionModel,{User:"/user/"+userOID,Project:"/project/"+projectOID,Role:permissionLevel}))):recordsToCreate.push(Ext.create(projectPermissionModel,{User:"/user/"+userOID,Project:"/project/"+projectOID,Role:permissionLevel}))})}),deferred.resolve({recordsToCreate:recordsToCreate,recordsToDelete:recordsToDelete})}}),deferred.promise},function(recordSets){recordSets.recordsToCreate.length+recordSets.recordsToDelete.length>0?(this.add({xtype:"rallydialog",id:"dialog",autoShow:!0,closeAction:"destroy",width:500,closable:!0,title:"Updating Permissions...",items:[{xtype:"progressbar",id:"updateProgress",value:0,text:"0%",failCount:0,totalCount:recordSets.recordsToCreate.length+recordSets.recordsToDelete.length,finishedCount:0,incrimentCount:function(){var percentRemaining=++this.finishedCount/this.totalCount;percentRemaining>=1?this.updateProgress(1,"Successful: "+Ext.util.Format.number(this.totalCount-this.failCount,"0,0")+" Failed: "+Ext.util.Format.number(this.failCount,"0,0")):this.updateProgress(percentRemaining,Math.round(100*percentRemaining)+"%")}}],listeners:{close:function(panel){panel.destroy()}}}),Deft.Chain.pipeline([function(){return 0===recordSets.recordsToDelete.length?[]:this._processRecords(recordSets.recordsToDelete,"destroy")},function(failedIds){return recordSets.recordsToCreate=_.filter(recordSets.recordsToCreate,function(record){return!_.contains(failedIds,record.get("User").ObjectID+"_"+record.get("Project").ObjectID)}),this._processRecords(recordSets.recordsToCreate,"save")}],this)):Rally.ui.notify.Notifier.showWarning({message:"No permissions to be changed.",duration:5e3})}],this)},_processRecords:function(records,method){var deferred=Ext.create("Deft.Deferred"),failedRecords=[];return Deft.Chain.sequence(_.map(records,function(record){return function(){var deferred=Ext.create("Deft.Deferred");return record[method]({success:function(){var progressBar=Ext.getCmp("updateProgress");progressBar&&progressBar.incrimentCount(),deferred.resolve()},failure:function(record,err){var progressBar=Ext.getCmp("updateProgress");progressBar&&(progressBar.failCount++,progressBar.incrimentCount()),failedRecords.push(record),deferred.resolve()}}),deferred.promise}})).then({success:function(){deferred.resolve(_.map(failedRecords,function(record){return record.get("User").ObjectID+"_"+record.get("Project").ObjectID}))}}),deferred.promise},_addUserActivityChart:function(){var self=this,departments=_.groupBy(this.userStore.getRecords(),function(record){return record.get("Department")}),categories=["Never",">6 Months","3-6 Months","1-3 Months","Last Month","Last Week"],series=Rally.util.Array.sortByAttribute(_.map(departments,function(records,department){var data=_.range(0,6,0);return _.each(records,function(record){var ageIndex;if(null===record.get("LastLoginDate"))ageIndex=0;else{var lastLoginAgeInWeeks=Rally.util.DateTime.getDifference(new Date,record.get("LastLoginDate"),"week");lastLoginAgeInWeeks>26&&(ageIndex=1),lastLoginAgeInWeeks>13&&26>=lastLoginAgeInWeeks&&(ageIndex=2),lastLoginAgeInWeeks>4&&13>=lastLoginAgeInWeeks&&(ageIndex=3),lastLoginAgeInWeeks>1&&4>=lastLoginAgeInWeeks&&(ageIndex=4),1>=lastLoginAgeInWeeks&&(ageIndex=5)}data[ageIndex]++,record.set("AgeIndex",ageIndex)}),{name:department,data:data}}),"name");Ext.getCmp("userActivityTab").add({xtype:"rallychart",id:"userActivityChart",chartConfig:{chart:{type:"column",events:{load:_.delay(self._resizeCharts,1e3)}},title:{text:"Last Login Activity"},subtitle:{text:"by Department"},yAxis:{min:0,stackLabels:{enabled:!0,style:{fontWeight:"bold"}},title:{text:""}},legend:{align:"center",verticalAlign:"bottom"},tooltip:{formatter:function(){return"<b>"+this.series.name+": "+this.y+"</b><br/>Total: "+this.point.stackTotal}},plotOptions:{column:{stacking:"normal",dataLabels:{enabled:!0,style:{color:"black"},formatter:function(){return.05>this.y/this.series.yAxis.dataMax?"":this.y}},events:{click:function(event){var records=_.filter(self.userStore.getRecords(),function(record){return record.get("AgeIndex")===event.point.x});self._showUserDetail(records,"User Activity: "+event.point.category)}}}}},chartData:{series:series,categories:categories},listeners:{afterrender:function(){this.unmask()}}})},_resizeCharts:function(){var chart=Ext.getCmp("userActivityChart"),tabHeight=Ext.getCmp("userActivityTab").getHeight();chart&&chart.down("highchart")&&chart.down("highchart").setHeight(tabHeight)},_showUserDetail:function(records,title){var self=this;Ext.create("Rally.ui.dialog.Dialog",{layout:"fit",autoShow:!0,width:750,height:Ext.getBody().getHeight()-250,autoScroll:!0,closable:!0,movable:!0,title:title,items:[{xtype:"rallygrid",id:"userActivityGrid",model:"User",store:Ext.create("Ext.data.Store",{fields:["FirstName","LastName","Department","LastLoginDate","Disabled","CreationDate"],data:records,groupField:"Department",pageSize:1e6}),showPagingToolbar:!1,showRowActionsColumn:!1,features:[{ftype:"groupingsummary",groupHeaderTpl:'{name} ({rows.length} User{[values.rows.length > 1 ? "s" : ""]})'}],columnCfgs:[{dataIndex:"FirstName",text:"First Name",flex:1},{dataIndex:"LastName",text:"Last Name",flex:1},{dataIndex:"LastLoginDate",text:"Last Login",width:80,align:"center",renderer:function(val){return Ext.util.Format.date(val,"Y-m-d")||"N/A"}},{dataIndex:"CreationDate",text:"Created",width:80,align:"center",renderer:function(val){return Ext.util.Format.date(val,"Y-m-d")||"N/A"}},{dataIndex:"Disabled",text:"Disabled",width:80,align:"center",renderer:function(val){return val?'<span class="icon-check"></span>':""}}],selModel:Ext.create("Ext.selection.CheckboxModel",{onHeaderClick:function(headerCt,header,e){e.stopEvent();var me=this,isChecked=header.el.hasCls(Ext.baseCSSPrefix+"grid-hd-checker-on");me.preventFocus=!0,isChecked?me.deselectAll(!0):me.selectAll(!0),delete me.preventFocus}})}],listeners:{afterrender:function(){this.header.add(1,[{xtype:"exportbutton",gridId:"userActivityGrid",margins:"0 5 0 0"},{xtype:"button",text:"Disable Selected",handler:function(){var grid=Ext.getCmp("userActivityGrid"),selModel=grid.getSelectionModel(),selectedUsers=selModel.getSelection();self._editUserDisabledSetting(selectedUsers,!0,grid)}},{xtype:"button",text:"Enable Selected",handler:function(){var grid=Ext.getCmp("userActivityGrid"),selModel=grid.getSelectionModel(),selectedUsers=selModel.getSelection();self._editUserDisabledSetting(selectedUsers,!1,grid)}}])}}})},_editUserDisabledSetting:function(records,disable,grid){grid.setLoading("Loading"),Rally.data.BulkRecordUpdater.updateRecords({records:records,propertiesToUpdate:{Disabled:disable},success:function(){grid.setLoading(!1),Rally.ui.notify.Notifier.show({message:"Users successfully "+(disable?"disabled":"enabled")+".",duration:5e3})},failure:function(){grid.setLoading(!1),Rally.ui.notify.Notifier.show({message:"An error occured while updating.",duration:1e3})}})}});
 
             Rally.launchApp('CustomApp', {
-                name:"User Managment Dashboard",
+                name:"User Permissions Managment",
 	            parentRepos:""
             });
 
@@ -19,10 +20,230 @@
 
 
     <style type="text/css">
-        .app {
-     /* Add app styles here */
+        .x-panel .x-resizable-handle-north,
+.x-panel .x-resizable-handle-east,
+.x-panel .x-resizable-handle-south,
+.x-panel .x-resizable-handle-west {
+  background: transparent !important; }
+.x-panel .x-grid-row-over > .x-grid-cell {
+  color: #FFFFFF !important;
+  background-color: #B5D8EB !important; }
+.x-panel .x-grid-row-selected > .x-grid-cell {
+  color: #FFFFFF !important;
+  background-color: #35b2e4 !important; }
+
+.x-panel .x-panel-header,
+.x-region-collapsed-placeholder {
+  background: #f6f6f6;
+  border-color: #d6d6d6; }
+  .x-panel .x-panel-header .x-panel-header-text,
+  .x-region-collapsed-placeholder .x-panel-header-text {
+    color: #666666 !important; }
+  .x-panel .x-panel-header img,
+  .x-region-collapsed-placeholder img {
+    background: transparent !important; }
+  .x-panel .x-panel-header .x-tool,
+  .x-region-collapsed-placeholder .x-tool {
+    margin-left: -1px !important;
+    width: 16px !important;
+    height: 16px !important;
+    background: #f6f6f6 !important;
+    border: 1px solid #d6d6d6 !important;
+    border-radius: 8px; }
+  .x-panel .x-panel-header.x-panel-header-default-left,
+  .x-region-collapsed-placeholder.x-panel-header-default-left {
+    border-width: 0 1px 0 0 !important; }
+  .x-panel .x-panel-header.x-panel-header-default-right,
+  .x-region-collapsed-placeholder.x-panel-header-default-right {
+    border-width: 0 0 0 1px !important; }
+
+#rpmTreePanel .x-tree-panel .x-panel-body {
+  border: 0; }
+#rpmTreePanel .x-tree-panel .x-tree-icon {
+  display: none; }
+#rpmTreePanel .x-tree-panel .propertyField, #rpmTreePanel .x-tree-panel .milestoneDate, #rpmTreePanel .x-tree-panel .groupTotal {
+  background: #f6f6f6;
+  color: #666666;
+  border: 1px solid #d6d6d6;
+  display: inline-block;
+  text-align: center;
+  font-size: 9px;
+  height: 16px;
+  line-height: 15px;
+  margin: 2px 4px 0 0;
+  border-radius: 3px;
+  font-weight: bold; }
+#rpmTreePanel .x-tree-panel .propertyField,
+#rpmTreePanel .x-tree-panel .groupTotal {
+  width: 35px; }
+#rpmTreePanel .x-tree-panel .milestoneDate {
+  width: 55px; }
+#rpmTreePanel #metaContainer .rally-grid .x-grid-row-over > .x-grid-cell,
+#rpmTreePanel #metaContainer .rally-grid .x-grid-row-selected > .x-grid-cell {
+  color: #000 !important;
+  background-color: #FFF !important; }
+#rpmTreePanel #metaContainer .rally-grid .x-grid-cell-inner {
+  padding: 1px 2px; }
+
+.app {
+  background: #FFF !important;
+  overflow: hidden !important;
+  border-left: 1px solid #D6D6D6;
+  border-right: 1px solid #D6D6D6; }
+
+.yes-harmonized .rally-grid.x-grid .x-grid-header-ct .x-box-inner .x-column-header .x-column-header-inner {
+  display: block; }
+
+.x-container {
+  background: white; }
+
+.x-btn {
+  background: white !important;
+  border-color: #d6d6d6 !important;
+  margin: 2px 1px;
+  padding: 1px 1px !important;
+  border-radius: 4px; }
+  .x-btn .x-btn-inner {
+    color: #666666 !important; }
+
+.borderTop {
+  border-top: 1px solid #d6d6d6 !important; }
+
+.borderRight {
+  border-right: 1px solid #d6d6d6 !important; }
+
+.borderBottom {
+  border-bottom: 1px solid #d6d6d6 !important; }
+
+.borderLeft {
+  border-left: 1px solid #d6d6d6 !important; }
+
+.tabBar {
+  background: #f6f6f6;
+  padding: 0 1px; }
+  .tabBar .x-btn.upTab {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0; }
+  .tabBar .x-btn.downTab {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0; }
+  .tabBar .x-btn.active {
+    background: #35b2e4 !important; }
+    .tabBar .x-btn.active .x-btn-inner {
+      color: #FFF !important; }
+
+.x-menu .x-menu-item-text {
+  font-family: arial, helvetica, sans-serif !important;
+  font-size: 11px !important; }
+
+.rally-grid .x-panel-default {
+  border-color: #D6D6D6 !important; }
+.rally-grid .x-panel-body-default {
+  border-width: 0 !important; }
+.rally-grid .x-column-header-sort-DESC,
+.rally-grid .x-column-header-sort-ASC {
+  background-color: transparent !important; }
+.rally-grid .x-grid-group-hd .x-grid-cell-inner {
+  border-color: #666666 !important; }
+  .rally-grid .x-grid-group-hd .x-grid-cell-inner .x-grid-group-title {
+    color: black !important; }
+.rally-grid .x-grid-view {
+  margin-top: 1px !important; }
+.rally-grid .x-grid-header-ct .x-box-inner {
+  border-bottom: 2px solid #666666 !important; }
+.rally-grid .x-grid-row-over .x-grid-cell {
+  background-color: #35b2e4 !important;
+  color: white !important; }
+.rally-grid .btn > .x-grid-cell-inner:hover {
+  cursor: pointer !important; }
+.rally-grid .x-grid-row-summary .blue,
+.rally-grid .blue > .x-grid-cell-inner {
+  border: 1px solid #b0d8f1;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #c6e9fe;
+  background: linear-gradient(to bottom, #c6e9fe 0%, #b0d8f1 100%); }
+.rally-grid .x-grid-row-summary .red,
+.rally-grid .red > .x-grid-cell-inner {
+  border: 1px solid #f1b0b8;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #fec6cd;
+  background: linear-gradient(to bottom, #fec6cd 0%, #f1b0b8 100%); }
+.rally-grid .x-grid-row-summary .yellow,
+.rally-grid .yellow > .x-grid-cell-inner {
+  border: 1px solid #ebd88a;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #feea9b;
+  background: linear-gradient(to bottom, #feea9b 0%, #ebd88a 100%); }
+.rally-grid .x-grid-row-summary .green,
+.rally-grid .green > .x-grid-cell-inner {
+  border: 1px solid #b8d7be;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #c5eecd;
+  background: linear-gradient(to bottom, #c5eecd 0%, #b8d7be 100%); }
+.rally-grid .x-grid-row-summary .grey,
+.rally-grid .grey > .x-grid-cell-inner {
+  border: 1px solid #e4e4e4;
+  border-radius: 4px;
+  margin: 2px;
+  padding: 4px 0 !important;
+  text-align: center;
+  color: black;
+  background: #f6f6f6;
+  background: linear-gradient(to bottom, #f6f6f6 0%, #e4e4e4 100%); }
+
+.x-tabpanel .x-tabpanel-child {
+  padding-left: 0 !important; }
+
+.x-window-header-default-top,
+.x-window-body-default {
+  background: white !important; }
+
+.x-window-header-default-top {
+  border: none !important; }
+  .x-window-header-default-top .x-tool {
+    display: none !important; }
+
+.x-toolbar {
+  border: none !important; }
+  .x-toolbar.x-toolbar-default {
+    background-color: transparent !important; }
+
+.x-mask {
+  background-color: white !important;
+  opacity: 0.5 !important; }
+
+.x-mask-msg div {
+  background-color: white !important; }
+
+    </style>
+    <style type="text/css">
+        .x-tabpanel-child {
+    padding-left: 0 !important;
 }
 
+.x-tree-icon {
+	display: none !important;
+}
+
+.x-grid-body {
+	border-top: 0 !important;
+}
     </style>
 </head>
 <body></body>

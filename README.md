@@ -1,4 +1,4 @@
-User Managment Dashboard
+User Permissions Managment
 =========================
 
 ## Overview

@@ -1,3 +1,11 @@
 .x-tabpanel-child {
     padding-left: 0 !important;
 }
+
+.x-tree-icon {
+	display: none !important;
+}
+
+.x-grid-body {
+	border-top: 0 !important;
+}
